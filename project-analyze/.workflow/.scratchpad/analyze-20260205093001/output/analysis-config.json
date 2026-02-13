@@ -1,0 +1,21 @@
+{
+  "type": "comprehensive",
+  "depth": "overview",
+  "scope": "**/*",
+  "target_project": "D:\\workspace\\GTRCenter\\consultant",
+  "focus_areas": [
+    "Layer Structure",
+    "Module Dependencies",
+    "Entry Points",
+    "Data Flow",
+    "Design Patterns",
+    "Class Relationships",
+    "Interface Contracts",
+    "State Management",
+    "Core Algorithms",
+    "Critical Paths",
+    "Public APIs",
+    "Complex Logic"
+  ],
+  "timestamp": "2026-02-05"
+}

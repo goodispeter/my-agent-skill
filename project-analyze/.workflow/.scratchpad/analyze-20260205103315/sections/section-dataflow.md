@@ -1,0 +1,47 @@
+# 資料流與狀態管理
+
+## 數據入口與形態轉換
+
+系統的數據流動起始於兩個主要入口點:Strava API與前端HTTP請求。從Strava API獲取的原始活動數據以`ResponseStravaActivities`模型的形式進入系統,該模型包含id、name、startDateLocal、sportType、averageSpeed等欄位,這些欄位名稱與結構完全遵循Strava API的返回格式。當數據進入Service層後,立即經歷首次形態轉換:通過業務邏輯的過濾與計算,轉化為符合系統領域模型的`TrainingRecordEntity`物件。
+
+這一轉換過程涉及複雜的業務規則應用。配速欄位需要從米/秒的速度值計算為分鐘:秒的配速字串,跑步類型需要通過[RunType.Classify](D:/workspace/side/Mtr.StravaConnect/Mtr.StravaConnect/Model/Shared/RunType.cs)方法基於活動名稱進行智能識別,訓練週數需要基於活動日期與計畫開始日期的時間差計算得出。每個轉換步驟都包含了業務know-how,這些知識被封裝在Service層的轉換邏輯中,避免了業務規則的散亂分佈。
+
+TrainingRecordEntity進入Repository層後,經歷第二次形態轉換:在 [TrainingRecordRepository.cs](D:/workspace/side/Mtr.StravaConnect/Mtr.StravaConnect.Repository/TrainingRecordRepository.cs) 的`BatchInsertDuplicateKeyUpdateAsync`方法中,Entity物件的屬性通過字串插值構建為SQL語句的VALUES子句。這一過程中,C#的強類型屬性被轉化為SQL的文本表示,DateTime被格式化為"yyyy-MM-dd HH:mm:ss"字串,可空類型通過三元運算符判斷後輸出NULL字面量或實際值。這種Entity到SQL的轉換確保了類型安全與數據完整性的無縫銜接。
+
+## 資料回流路徑
+
+資料的回流路徑始於資料庫查詢。Repository層通過Dapper執行SELECT語句,返回的行集合被自動映射為`TrainingRecordEntity`物件列表。Dapper的對象映射機制通過反射匹配SQL列名與Entity屬性名(通過`AS`子句實現大小寫轉換),自動完成從資料庫行到C#物件的轉換。這種ORM層的自動化處理顯著減少了手動組裝物件的樣板代碼。
+
+Service層接收到Entity集合後,執行複雜的業務聚合邏輯。以 [StravaService.cs](D:/workspace/side/Mtr.StravaConnect/Mtr.StravaConnect.Service/StravaService.cs) 的`GetTrainingRecordsAsync`方法為例,Entity集合首先被轉換為`TrainingRecord`領域對象列表,隨後通過LINQ的GroupBy操作按年月或週進行分組,每個分組內計算Sum、Count等聚合指標,最終構建為`MonthlyTrainingRecord`或`WeeklyTrainingRecord`物件。這一聚合過程展現了從原子數據到統計洞察的價值提升。
+
+轉換後的領域對象被封裝在`ResponseTrainingRecords`模型中,該模型包含目標名稱、總距離、總移動時間、主訓練計數等匯總指標,以及按月與按週的訓練記錄分組。Service層返回Response模型至控制器層,控制器通過`ResponseBase<T>.Ok(data)`進一步包裝為統一的API響應結構。最終,ASP.NET Core的JSON序列化器將ResponseBase<ResponseTrainingRecords>物件序列化為JSON文本,通過HTTP響應體返回給前端。
+
+整個回流路徑中的多次形態轉換體現了關注點分離原則:Repository層使用的Entity模型專注於資料庫映射,Service層使用的Response模型專注於業務語義表達,WebApi層使用的ResponseBase模型專注於協議統一性。每層使用最適合其場景的數據結構,避免了單一模型職責過載的問題。
+
+## 持久化策略與一致性
+
+系統採用SQLite作為嵌入式資料庫,持久化策略圍繞訓練記錄表(training_record)展開。從 [SqliteConnectionFactory.cs](D:/workspace/side/Mtr.StravaConnect/Mtr.StravaConnect.Repository/Infrastructure/SqliteConnectionFactory.cs) 的建表邏輯可以看出,系統設計了複合索引策略:user欄位、startDate欄位、week_id欄位均建立了獨立索引,這確保了按用戶、按日期、按週的查詢都能享受索引加速。
+
+批次插入採用了`INSERT OR REPLACE`語法實現冪等性保障。當相同id的記錄重複插入時,SQLite會自動覆蓋舊記錄而非報錯或創建重複行。這種策略使得訓練記錄同步邏輯無需預先檢查記錄是否存在,簡化了業務代碼的複雜度。同時,冪等性保障確保了同步任務的可重複執行性,即使因網絡故障導致部分記錄重複同步,也不會產生數據重複問題。
+
+事務邊界在系統中被隱式管理。Dapper執行的單個SQL語句默認包裹在自動提交事務中,確保了單條記錄的原子性。批次插入雖然涉及多行數據,但由於採用了單一SQL語句的批次VALUES子句,仍然享受SQLite的事務保護:要么所有行都插入成功,要么全部回滾。這種依賴資料庫事務機制的策略避免了在應用層手動管理事務的複雜性。
+
+## 狀態管理模式
+
+系統的狀態管理策略呈現出分層特徵。應用級狀態由 [StravaTokenStore](D:/workspace/side/Mtr.StravaConnect/Mtr.StravaConnect.Service/Stores/StravaTokenStore.cs) 管理,該Singleton物件在整個應用生命週期內持有所有用戶的Access Token。這種記憶體內狀態管理策略的優勢在於存取速度極快,無需每次請求都查詢資料庫或呼叫外部API。TokenStore的Dictionary結構以用戶名為key、Token字串為value,實現了O(1)的Token查找效率。
+
+Token的生命週期管理通過背景服務實現自動化。[StravaTokenBackgroundService](D:/workspace/side/Mtr.StravaConnect/Mtr.StravaConnect.Service/Background/StravaTokenBackgroundService.cs) 每五小時執行一次全量刷新,通過`TokenStore.AccessTokens.Clear()`清空舊Token,隨後從Strava API獲取新Token並重新填充Dictionary。這種全量更新策略的簡潔性犧牲了細粒度的增量更新能力,但在當前業務場景下(用戶數量有限且Token刷新不頻繁)展現出良好的實用性。
+
+請求級狀態通過ASP.NET Core的Scoped生命週期管理。每個HTTP請求獲得獨立的IStravaService與ITrainingRecordRepository實例,請求處理過程中的臨時狀態(如查詢結果、中間計算值)存儲在這些實例的字段或方法局部變數中,請求結束後隨作用域釋放而自動銷毀。這種無狀態服務設計確保了多請求間的完全隔離,避免了併發場景下的狀態污染問題。
+
+TraceId作為分散式追蹤的關鍵狀態,通過多層傳遞實現全鏈路關聯。[TraceIdMiddleware](D:/workspace/side/Mtr.StravaConnect/Mtr.StravaConnect.MiddleWare/TraceIdMiddleware.cs) 將TraceId存儲至`HttpContext.Items`字典,該字典在請求處理期間保持可存取,使得下游的中介軟體或控制器能夠讀取TraceId。同時,通過`LogContext.PushProperty`將TraceId推送至Serilog的ambient上下文,使得該作用域內的所有日誌記錄都自動包含該屬性。這種基於上下文傳播的狀態管理模式避免了顯式傳遞TraceId參數的繁瑣。
+
+## 資料一致性保障
+
+系統在資料一致性方面採用了最終一致性(Eventual Consistency)策略。訓練記錄的同步並非實時進行,而是由前端主動觸發同步操作。這種按需同步的設計意味著系統中的訓練數據可能滯後於Strava平台的實際狀態,但通過明確的同步觸發點,用戶能夠理解並接受這種短暫的不一致性。
+
+Token刷新的一致性通過背景服務的週期性執行保障。雖然理論上存在Token刷新與業務請求併發執行的可能性(業務請求正在讀取TokenStore時,背景服務觸發刷新並清空Dictionary),但實際風險極低:Token的讀取操作為O(1)的字典查找,執行時間極短,與每五小時一次的低頻刷新操作重疊的概率微乎其微。若未來業務量增長導致併發風險增加,可考慮引入讀寫鎖(ReaderWriterLockSlim)實現細粒度的併發控制。
+
+資料庫層面的一致性由SQLite的ACID事務機制保障。單個SQL語句的執行要么完全成功要么完全回滾,不存在部分成功的中間狀態。批次插入雖然涉及多行數據,但由於採用單一SQL語句,仍然享受原子性保護。對於未來可能的分散式部署場景,若需要跨資料庫的事務一致性,可考慮引入分散式事務框架(如Saga模式)或通過事件溯源(Event Sourcing)模式實現最終一致性。
+
+從整體視角審視,Mtr.StravaConnect的資料流與狀態管理設計體現了對業務場景的深度理解。系統通過多層次的形態轉換實現了不同層級的關注點分離,通過SQLite的嵌入式特性簡化了部署複雜度,通過記憶體內Token快取提升了認證性能,通過Scoped生命週期確保了請求隔離性。這些設計決策在簡潔性、性能與一致性之間取得了良好平衡,為系統的穩健運行奠定了堅實基礎。

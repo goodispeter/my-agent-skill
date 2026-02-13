@@ -1,0 +1,15 @@
+{
+  "type": "comprehensive",
+  "depth": "deep-dive",
+  "scope": "**/*",
+  "target_project": "D:\\workspace\\side\\Mtr.StravaConnect",
+  "focus_areas": [
+    "architecture",
+    "design-patterns",
+    "dependencies",
+    "integration-points",
+    "core-algorithms",
+    "api-design"
+  ],
+  "timestamp": "20260205103315"
+}

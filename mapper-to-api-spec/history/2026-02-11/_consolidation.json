@@ -1,0 +1,154 @@
+{
+  "consolidations": [
+    {
+      "resource_name": "session-types",
+      "merged_api": {
+        "endpoint": "GET /session-types",
+        "params": [
+          {"name": "webSite", "type": "string", "required": false, "description": "網站篩選"},
+          {"name": "sourceSn", "type": "integer", "required": false, "description": "來源 SN 篩選"}
+        ]
+      },
+      "source_methods": [
+        {
+          "mapper": "SessionTypeMapper",
+          "method": "selectAll",
+          "params": [],
+          "return_type": "List<SessionTypeEntity>",
+          "equivalent_call": "GET /session-types"
+        },
+        {
+          "mapper": "SessionTypeMapper",
+          "method": "selectByWebSite",
+          "params": ["String webSite"],
+          "return_type": "List<SessionTypeEntity>",
+          "equivalent_call": "GET /session-types?webSite={webSite}"
+        },
+        {
+          "mapper": "SessionTypeMapper",
+          "method": "selectBySn",
+          "params": ["Integer sourceSn"],
+          "return_type": "List<SessionTypeEntity>",
+          "equivalent_call": "GET /session-types?sourceSn={sourceSn}"
+        }
+      ],
+      "consolidation_reason": "相同資源的查詢變體，只是過濾條件不同",
+      "benefits": "減少 3 個 API 端點為 1 個，提升 API 一致性"
+    },
+    {
+      "resource_name": "activity-rule-details",
+      "merged_api": {
+        "endpoint": "GET /activity-rule-details",
+        "params": [
+          {"name": "levelNo", "type": "string", "required": false, "description": "等級編號篩選"}
+        ]
+      },
+      "source_methods": [
+        {
+          "mapper": "ActivityRuleDetailMapper",
+          "method": "selectAll",
+          "params": [],
+          "return_type": "List<ActivityRuleDetailEntity>",
+          "equivalent_call": "GET /activity-rule-details"
+        },
+        {
+          "mapper": "ActivityRuleDetailMapper",
+          "method": "selectByLevelNo",
+          "params": ["String levelNo"],
+          "return_type": "List<ActivityRuleDetailEntity>",
+          "equivalent_call": "GET /activity-rule-details?levelNo={levelNo}"
+        }
+      ],
+      "consolidation_reason": "全部查詢與條件查詢可用可選參數合併",
+      "benefits": "減少 2 個 API 端點為 1 個"
+    },
+    {
+      "resource_name": "activity-rule-heads",
+      "merged_api": {
+        "endpoint": "GET /activity-rule-heads",
+        "params": [
+          {"name": "activitySn", "type": "integer", "required": false, "description": "活動 SN 篩選"}
+        ]
+      },
+      "source_methods": [
+        {
+          "mapper": "ActivityRuleHeadMapper",
+          "method": "selectAll",
+          "params": [],
+          "return_type": "List<ActivityRuleHeadEntity>",
+          "equivalent_call": "GET /activity-rule-heads"
+        },
+        {
+          "mapper": "ActivityRuleHeadMapper",
+          "method": "selectByActivitySn",
+          "params": ["int activitySn"],
+          "return_type": "List<ActivityRuleHeadEntity>",
+          "equivalent_call": "GET /activity-rule-heads?activitySn={activitySn}"
+        }
+      ],
+      "consolidation_reason": "全部查詢與條件查詢可用可選參數合併",
+      "benefits": "減少 2 個 API 端點為 1 個"
+    },
+    {
+      "resource_name": "activity-rule-rewards",
+      "merged_api": {
+        "endpoint": "GET /activity-rule-rewards",
+        "params": [
+          {"name": "levelNo", "type": "string", "required": false, "description": "等級編號篩選"}
+        ]
+      },
+      "source_methods": [
+        {
+          "mapper": "ActivityRuleRewardMapper",
+          "method": "selectAll",
+          "params": [],
+          "return_type": "List<ActivityRuleRewardEntity>",
+          "equivalent_call": "GET /activity-rule-rewards"
+        },
+        {
+          "mapper": "ActivityRuleRewardMapper",
+          "method": "selectBylevelNo",
+          "params": ["String levelNo"],
+          "return_type": "List<ActivityRuleRewardEntity>",
+          "equivalent_call": "GET /activity-rule-rewards?levelNo={levelNo}"
+        }
+      ],
+      "consolidation_reason": "全部查詢與條件查詢可用可選參數合併",
+      "benefits": "減少 2 個 API 端點為 1 個"
+    },
+    {
+      "resource_name": "cfg-activities",
+      "merged_api": {
+        "endpoint": "GET /cfg-activities/{sn}",
+        "alternative_endpoint": "GET /cfg-activities",
+        "params": [
+          {"name": "sn", "type": "integer", "required": false, "in": "path", "description": "活動配置 SN，有值時查詢單筆，無值時查詢全部"}
+        ]
+      },
+      "source_methods": [
+        {
+          "mapper": "CfgActivityMapper",
+          "method": "selectAll",
+          "params": [],
+          "return_type": "List<CfgActivityEntity>",
+          "equivalent_call": "GET /cfg-activities"
+        },
+        {
+          "mapper": "CfgActivityMapper",
+          "method": "selectByPrimaryKey",
+          "params": ["Integer sn"],
+          "return_type": "CfgActivityEntity",
+          "equivalent_call": "GET /cfg-activities/{sn}"
+        }
+      ],
+      "consolidation_reason": "單筆與列表查詢，使用 RESTful 慣例（有 ID 和無 ID）",
+      "benefits": "符合 RESTful 設計慣例"
+    }
+  ],
+  "summary": {
+    "total_methods": 21,
+    "after_consolidation": 16,
+    "reduced_apis": 5,
+    "consolidation_groups": 5
+  }
+}

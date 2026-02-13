@@ -1,0 +1,128 @@
+{
+  "project_info": {
+    "path": "D:\\workspace\\oms\\OMS_StudyProgress\\dal_products",
+    "scan_date": "2026-02-11",
+    "total_mappers": 12
+  },
+  "mappers": [
+    {
+      "name": "SessionTypeMapper",
+      "package": "com.tutorabc.product.studyprogress.dal_products.DBMapper.TutorERP",
+      "file_path": "TutorERP/SessionTypeMapper.java",
+      "type": "MyBatis_Interface",
+      "category": "QUERY",
+      "method_count": 3,
+      "complexity": "SIMPLE"
+    },
+    {
+      "name": "CfgContractActivityMapper",
+      "package": "com.tutorabc.product.studyprogress.dal_products.DBMapper.MuchNew",
+      "file_path": "MuchNew/CfgContractActivityMapper.java",
+      "type": "MyBatis_Interface",
+      "category": "QUERY",
+      "method_count": 1,
+      "complexity": "SIMPLE"
+    },
+    {
+      "name": "ClientPurchaseMapper",
+      "package": "com.tutorabc.product.studyprogress.dal_products.DBMapper.MuchNew",
+      "file_path": "MuchNew/ClientPurchaseMapper.java",
+      "type": "MyBatis_Interface",
+      "category": "QUERY",
+      "method_count": 1,
+      "complexity": "SIMPLE"
+    },
+    {
+      "name": "ClientTemporalContractMapper",
+      "package": "com.tutorabc.product.studyprogress.dal_products.DBMapper.MuchNew",
+      "file_path": "MuchNew/ClientTemporalContractMapper.java",
+      "type": "MyBatis_Interface",
+      "category": "CRUD",
+      "method_count": 2,
+      "complexity": "SIMPLE"
+    },
+    {
+      "name": "ContractChangeRecordMapper",
+      "package": "com.tutorabc.product.studyprogress.dal_products.DBMapper.MuchNew",
+      "file_path": "MuchNew/ContractChangeRecordMapper.java",
+      "type": "MyBatis_Interface",
+      "category": "QUERY",
+      "method_count": 1,
+      "complexity": "SIMPLE"
+    },
+    {
+      "name": "ActivityRecordMapper",
+      "package": "com.tutorabc.product.studyprogress.dal_products.DBMapper.TutorERP",
+      "file_path": "TutorERP/ActivityRecordMapper.java",
+      "type": "MyBatis_Interface",
+      "category": "CRUD",
+      "method_count": 2,
+      "complexity": "MEDIUM"
+    },
+    {
+      "name": "ActivityRuleDetailMapper",
+      "package": "com.tutorabc.product.studyprogress.dal_products.DBMapper.TutorERP",
+      "file_path": "TutorERP/ActivityRuleDetailMapper.java",
+      "type": "MyBatis_Interface",
+      "category": "QUERY",
+      "method_count": 2,
+      "complexity": "SIMPLE"
+    },
+    {
+      "name": "ActivityRuleHeadMapper",
+      "package": "com.tutorabc.product.studyprogress.dal_products.DBMapper.TutorERP",
+      "file_path": "TutorERP/ActivityRuleHeadMapper.java",
+      "type": "MyBatis_Interface",
+      "category": "QUERY",
+      "method_count": 2,
+      "complexity": "SIMPLE"
+    },
+    {
+      "name": "ActivityRuleRewardMapper",
+      "package": "com.tutorabc.product.studyprogress.dal_products.DBMapper.TutorERP",
+      "file_path": "TutorERP/ActivityRuleRewardMapper.java",
+      "type": "MyBatis_Interface",
+      "category": "QUERY",
+      "method_count": 2,
+      "complexity": "SIMPLE"
+    },
+    {
+      "name": "CfgActivityMapper",
+      "package": "com.tutorabc.product.studyprogress.dal_products.DBMapper.TutorERP",
+      "file_path": "TutorERP/CfgActivityMapper.java",
+      "type": "MyBatis_Interface",
+      "category": "CRUD",
+      "method_count": 2,
+      "complexity": "SIMPLE"
+    },
+    {
+      "name": "CfgProductActivityMapper",
+      "package": "com.tutorabc.product.studyprogress.dal_products.DBMapper.TutorERP",
+      "file_path": "TutorERP/CfgProductActivityMapper.java",
+      "type": "MyBatis_Interface",
+      "category": "QUERY",
+      "method_count": 1,
+      "complexity": "MEDIUM"
+    },
+    {
+      "name": "CfgProductMapper",
+      "package": "com.tutorabc.product.studyprogress.dal_products.DBMapper.TutorERP",
+      "file_path": "TutorERP/CfgProductMapper.java",
+      "type": "MyBatis_Interface",
+      "category": "CRUD",
+      "method_count": 2,
+      "complexity": "SIMPLE"
+    }
+  ],
+  "summary": {
+    "total_methods": 21,
+    "by_category": {
+      "QUERY": 9,
+      "CRUD": 3
+    },
+    "by_complexity": {
+      "SIMPLE": 10,
+      "MEDIUM": 2
+    }
+  }
+}
