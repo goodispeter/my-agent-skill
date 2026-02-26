@@ -118,23 +118,6 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-aspectj</artifactId>
         </dependency>
-
-        <!-- Retrofit (推薦始終加入，即使暫時不使用外部 API) -->
-        <dependency>
-            <groupId>com.squareup.retrofit2</groupId>
-            <artifactId>retrofit</artifactId>
-            <version>2.11.0</version>
-        </dependency>
-        <dependency>
-            <groupId>com.squareup.retrofit2</groupId>
-            <artifactId>converter-gson</artifactId>
-            <version>2.11.0</version>
-        </dependency>
-        <dependency>
-            <groupId>com.squareup.okhttp3</groupId>
-            <artifactId>logging-interceptor</artifactId>
-            <version>3.14.9</version>
-        </dependency>
         <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-lang3</artifactId>
@@ -236,7 +219,7 @@
    - `spring-boot-starter-aop` 必須使用 `<version>4.0.0-M2</version>`（這是關鍵！忽略會導致編譯失敗）
    - Swagger 使用 `${springdoc.version}` 引用 properties 中的版本
    - Lombok 使用 `${lombok.version}` 並設定 `<scope>provided</scope>`
-   - 所有第三方套件（Retrofit, Commons Collections）都必須保留明確版本號
+   - 所有第三方套件（如 Commons Collections）都必須保留明確版本號
 
 ---
 
@@ -677,129 +660,7 @@ public class TraceFilter implements Filter {
 
 ---
 
-### Step 2.6: 生成 Retrofit 配置（含 TraceId 機制）
-
-生成 Retrofit 配置類別，提供 OkHttpClient、GsonConverterFactory 和 TraceId 傳遞機制。
-
-**重要**：無論是否使用外部 API，都生成此配置，以便未來擴展使用。
-
-**config/RetrofitConfig.java:**
-
-```java
-package {basePackage}.{appName}.config;
-
-import okhttp3.Interceptor;
-import okhttp3.OkHttpClient;
-import okhttp3.Request;
-import okhttp3.logging.HttpLoggingInterceptor;
-import org.apache.commons.lang3.StringUtils;
-import org.slf4j.MDC;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import retrofit2.Retrofit;
-import retrofit2.converter.gson.GsonConverterFactory;
-
-import java.util.concurrent.TimeUnit;
-
-@Configuration
-public class RetrofitConfig {
-
-    private static final String TRACE_ID_HEADER = "X-Trace-Id";
-    private static final String TRACE_ID_MDC_KEY = "traceId";
-
-    @Bean
-    public OkHttpClient okHttpClient() {
-        return new OkHttpClient.Builder()
-                .addInterceptor(traceIdInterceptor())
-                .addInterceptor(loggingInterceptor())
-                .connectTimeout(5, TimeUnit.SECONDS)
-                .readTimeout(15, TimeUnit.SECONDS)
-                .writeTimeout(15, TimeUnit.SECONDS)
-                .build();
-    }
-
-    @Bean
-    public GsonConverterFactory gsonConverterFactory() {
-        return GsonConverterFactory.create();
-    }
-
-    /* EXAMPLE: 外部 API 介面 Bean 範例（實際使用時取消註解並修改）
-    @Bean
-    public ExampleApi exampleApi(OkHttpClient client, GsonConverterFactory gson) {
-        return new Retrofit.Builder()
-                .baseUrl("https://api.example.com")
-                .client(client)
-                .addConverterFactory(gson)
-                .build()
-                .create(ExampleApi.class);
-    }
-    */
-
-    /**
-     * TraceId 攔截器：將 MDC 中的 traceId 傳遞到外部 API 的 HTTP Header
-     * 確保內部請求的 traceId 可追蹤到外部 API 呼叫
-     */
-    private Interceptor traceIdInterceptor() {
-        return chain -> {
-            Request request = chain.request();
-            String traceId = MDC.get(TRACE_ID_MDC_KEY);
-            if (StringUtils.isNotBlank(traceId)) {
-                request = request.newBuilder()
-                        .addHeader(TRACE_ID_HEADER, traceId)
-                        .build();
-            }
-            return chain.proceed(request);
-        };
-    }
-
-    /**
-     * HTTP 日誌攔截器
-     */
-    private HttpLoggingInterceptor loggingInterceptor() {
-        HttpLoggingInterceptor interceptor = new HttpLoggingInterceptor();
-        interceptor.setLevel(HttpLoggingInterceptor.Level.BASIC);
-        return interceptor;
-    }
-}
-```
-
-**執行動作：**
-
-1. 創建 `config/RetrofitConfig.java`
-2. 替換 `{basePackage}`, `{appName}` 為實際值
-3. 示例 API Bean 已註解，需要時可取消註解並修改
-
-**TraceId 傳遞機制說明：**
-
-- **traceIdInterceptor**：從 MDC 取得當前請求的 traceId，並自動加入到外部 API 呼叫的 HTTP Header
-- **全鏈路追蹤**：確保內部請求 → 外部 API 的完整追蹤鏈
-- **X-Trace-Id Header**：與 TraceFilter 使用相同的 header 名稱，保持一致性
-
-**使用範例（需取消註解）：**
-
-當需要呼叫外部 API 時：
-
-1. 創建 API 介面（如 `external/api/ExampleApi.java`）
-2. 取消註解 `exampleApi` Bean 方法
-3. 修改 `baseUrl` 和 API 介面類型
-4. 在 Service 中注入使用：
-
-```java
-@Service
-@RequiredArgsConstructor
-public class ExampleService {
-    private final ExampleApi exampleApi;
-
-    public void callExternalApi() {
-        // traceId 會自動帶入 HTTP Header
-        exampleApi.getData().execute();
-    }
-}
-```
-
----
-
-### Step 2.7: 生成測試基礎程式碼
+### Step 2.6: 生成測試基礎程式碼
 
 創建基本的測試類別。
 
