@@ -1,59 +1,54 @@
 ---
 name: mapper-to-api-spec
-description: 分析 SQL Server Mapper（MyBatis/JPA 等）並自動生成對應的 RESTful API 規格文件。用於將直接資料庫存取遷移至 API 架構。觸發詞："生成 API 規格"、"Mapper 轉 API"、"資料庫遷移至 API"、"分析 Mapper"。
+description: 分析 SQL Server Mapper（MyBatis/JPA 等）並生成簡潔的 API 規格文件。產出三個核心檔案：API-SPEC.md (主表格)、input.md (Input DTO)、output.md (Output DTO)。觸發詞："生成 API 規格"、"Mapper 轉 API"、"分析 Mapper"。
 ---
 
 # Mapper to API Specification Generator
 
-將 SQL Server 的 Mapper 層轉換為 RESTful API 規格的多階段分析工具。
+將 SQL Server 的 Mapper 層分析並產出簡潔的 API 規格文件。
 
 ## 核心目標
 
-從 MyBatis Mapper、JPA Repository 或其他資料存取層自動推導：
+從 MyBatis Mapper、JPA Repository 或其他資料存取層分析並產出：
 
-- RESTful API 端點設計
-- Request/Response DTO 結構
-- API 路由與 HTTP 方法對應
-- OpenAPI 3.0 規格文件
+- **API-SPEC.md**: 主要表格，列出所有 Mapper 方法與其基本資訊
+- **input.md**: 所有 Input DTO 定義（可被 API-SPEC.md 連結）
+- **output.md**: 所有 Output DTO 定義（可被 API-SPEC.md 連結）
+- **{api_Name}.md**: 複雜 API 的獨立詳細說明檔案
+
+## 設計原則
+
+1. **不自動命名 API 或設定 endpoint** - 只分析 Mapper 方法，不做 RESTful 轉換
+2. **簡單的保持簡單** - 簡單查詢直接填在表格中
+3. **複雜的獨立說明** - 複雜邏輯產出獨立的 `{api_Name}.md` 檔案
+4. **集中管理 DTO** - 所有 Input/Output 定義集中在 input.md / output.md
 
 ## 架構流程
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
-│  Phase 1: Mapper Discovery & Classification                  │
-│  → 掃描目標路徑，識別 Mapper 類型（MyBatis XML/Java/JPA）    │
-│  → 分類：CRUD / 複雜查詢 / 批次操作 / 統計聚合               │
-│  → Output: history/{date}/mapper-inventory.json              │
+│  Phase 1: Mapper Discovery                                   │
+│  → 掃描目標路徑，識別 Mapper 檔案                            │
+│  → 識別 Mapper 類型（MyBatis XML/Java/JPA）                  │
+│  → 統計方法數量                                              │
+│  → Output: mapper-inventory.json                             │
 ├──────────────────────────────────────────────────────────────┤
-│  Phase 2: Method Consolidation Analysis                      │
-│  → 識別可合併為單一 API 的 Mapper 方法                        │
-│  → 分析相似查詢邏輯（同資源、不同條件）                        │
-│  → 設計統一 API + 參數組合代替多個方法                    │
-│  → 記錄參數對應關係（如何還原原始方法）                    │
-│  → Output: history/{date}/_consolidation.json               │
+│  Phase 2: Method Analysis                                    │
+│  → 分析每個 Mapper 方法                                      │
+│  → 解析方法簽章、參數、返回類型                             │
+│  → 解析 SQL 語句（SELECT/INSERT/UPDATE/DELETE）             │
+│  → 判斷複雜度（簡單/複雜）                                   │
+│  → 提取 Input/Output DTO 結構                                │
+│  → Output: _analysis/{mapper-name}.json                      │
 ├──────────────────────────────────────────────────────────────┤
-│  Phase 3: Deep Analysis (平行 Agent)                         │
-│  → 每個 Mapper 啟動一個分析 Agent                            │
-│  → 解析 SQL 語句、方法簽章、參數、返回類型                   │
-│  → 推導資料模型與關聯關係                                    │
-│  → Output: history/{date}/_analysis/{mapper-name}.json       │
-├──────────────────────────────────────────────────────────────┤
-│  Phase 4: API Design Generation                              │
-│  → 根據 RESTful 最佳實踐設計 API 端點                        │
-│  → 應用合併分析結果，減少冗餘 API                           │
-│  → CRUD → GET/POST/PUT/DELETE                                │
-│  → 查詢 → GET with query params                              │
-│  → 批次 → POST with array payload                            │
-│  → Output: history/{date}/{resource}.md (資源視角)           │
-│  → Output: history/{date}/_mappers/{Mapper}.md (追溯視角)    │
-├──────────────────────────────────────────────────────────────┤
-│  Phase 5: Specification Assembly (KM Ready)                  │
-│  → 整合所有資源 API 為完整規格文件                           │
-│  → 生成 OpenAPI 3.0 YAML (技術整合用)                        │
-│  → 生成 API-SPEC.md (適合貼到 KM 的完整文件)                 │
-│  → 包含目錄、範例、錯誤碼、合併方法對照表                  │
-│  → Output: history/{date}/openapi-spec.yaml                  │
-│  → Output: history/{date}/API-SPEC.md                        │
+│  Phase 3: Generate Specification Files                       │
+│  → 生成 API-SPEC.md（主表格）                                │
+│    - 簡單方法：直接填在表格中                               │
+│    - 複雜方法：產生獨立 {api_Name}.md 並在表格中連結        │
+│  → 生成 input.md（所有 Input DTO 定義）                      │
+│  → 生成 output.md（所有 Output DTO 定義）                    │
+│  → 生成複雜方法的獨立檔案（如需要）                         │
+│  → Output: API-SPEC.md, input.md, output.md, {api}.md       │
 └──────────────────────────────────────────────────────────────┘
 ```
 
@@ -64,7 +59,6 @@ description: 分析 SQL Server Mapper（MyBatis/JPA 等）並自動生成對應�
 **輸入**:
 
 - Mapper 根目錄路徑
-- 專案類型提示（MyBatis/JPA/Hibernate）
 
 **執行**:
 
@@ -84,7 +78,6 @@ grep <select|insert|update|delete>
 
 ```json
 {
-  "project_type": "MyBatis",
   "total_mappers": 15,
   "mappers": [
     {
@@ -92,9 +85,7 @@ grep <select|insert|update|delete>
       "type": "MyBatis_XML",
       "file_path": "dal_products/StudentMapper.java",
       "xml_path": "dal_products/StudentMapper.xml",
-      "category": "CRUD_AND_QUERY",
-      "method_count": 8,
-      "complexity": "MEDIUM"
+      "method_count": 8
     }
   ]
 }
@@ -102,569 +93,753 @@ grep <select|insert|update|delete>
 
 ---
 
-### Phase 2: Method Consolidation Analysis
+### Phase 2: Method Analysis
 
-**目標**: 識別可合併為單一 API 的 Mapper 方法，減少 API 數量並提升一致性
+**目標**: 分析每個 Mapper 方法的詳細資訊
 
-**合併識別規則**:
+**分析內容**:
 
-1. **相同資源的查詢變體**
-   - 例：`selectByType(String type)`, `selectByStatus(String status)`, `selectByTypeAndStatus(...)`
-   - 合併為：`GET /resources?type={type}&status={status}`
+1. **方法基本資訊**
+   - 方法名稱
+   - 參數類型與名稱
+   - 返回類型（單筆/列表/分頁/數量）
 
-2. **分頁 vs. 全部查詢**
-   - 例：`selectAll()`, `selectPage(int page, int size)`
-   - 合併為：`GET /resources?page={page}&size={size}` (分頁參數可選)
+2. **SQL 分析**
+   - SQL 類型（SELECT/INSERT/UPDATE/DELETE）
+   - 查詢欄位
+   - WHERE 條件
+   - JOIN 關聯
 
-3. **單筆 vs. 多筆操作**
-   - 例：`delete(Long id)`, `batchDelete(List<Long> ids)`
-   - 合併為：`DELETE /resources` + body `{"ids": [1, 2, 3]}` (單筆傳 array 長度 1)
+3. **複雜度判斷**
+   - **簡單**: 單表 CRUD、簡單條件查詢
+   - **複雜**: 多表 JOIN、複雜邏輯、批次操作、統計聚合
 
-4. **排序變體**
-   - 例：`selectOrderByName()`, `selectOrderByDate()`
-   - 合併為：`GET /resources?sort=name` 或 `sort=date`
+4. **API 方法合併分析** ⚠️ **重要**
 
-**輸出**: `_consolidation.json`
+   **目標**: 將可用可選參數實現的方法合併為單一 API，避免產生過多 endpoint。
 
-```json
-{
-  "consolidations": [
-    {
-      "merged_api": {
-        "endpoint": "GET /session-types",
-        "params": [
-          { "name": "type", "type": "string", "required": false },
-          { "name": "status", "type": "string", "required": false },
-          { "name": "includeInactive", "type": "boolean", "default": false }
-        ]
-      },
-      "source_methods": [
-        {
-          "mapper": "SessionTypeMapper",
-          "method": "selectByType",
-          "params": ["String type"],
-          "equivalent_call": "GET /session-types?type={type}"
-        },
-        {
-          "mapper": "SessionTypeMapper",
-          "method": "selectByStatus",
-          "params": ["String status"],
-          "equivalent_call": "GET /session-types?status={status}"
-        },
-        {
-          "mapper": "SessionTypeMapper",
-          "method": "selectAllIncludeInactive",
-          "params": [],
-          "equivalent_call": "GET /session-types?includeInactive=true"
-        }
-      ],
-      "consolidation_reason": "相同資源的查詢變體，只是過濾條件不同",
-      "benefits": "減少 3 個 API 端點為 1 個，提升 API 一致性"
-    }
-  ],
-  "summary": {
-    "total_methods": 47,
-    "after_consolidation": 28,
-    "reduced_apis": 19
-  }
-}
-```
+   **合併規則**:
 
----
+   | 模式                           | 範例方法                                                    | 合併後 API 名稱                | 合併策略                               |
+   | ------------------------------ | ----------------------------------------------------------- | ------------------------------ | -------------------------------------- |
+   | selectAll + selectByX          | `selectAll()` + `selectByLevelNo(String)`                   | `queryActivityRuleDetails`     | levelNo 改為可選參數                   |
+   | selectByX1 + selectByX2        | `selectByWebSite(String)` + `selectBySn(Integer)`           | `querySessionTypes`            | webSite 和 sn 都改為可選，支援同時傳入 |
+   | selectByPrimaryKey + selectByX | `selectByPrimaryKey(Integer)` + `selectByClientSn(Integer)` | `queryClientTemporalContracts` | sn 和 clientSn 改為可選，至少傳一個    |
 
-### Phase 3: Deep Analysis（平行 Agent）
+   **判斷邏輯**:
+   1. **識別候選方法**: 同一個 Mapper 中，返回類型相同或兼容的查詢方法
+   2. **檢查參數差異**:
+      - 若方法 A 無參數，方法 B 有參數 → 可合併（A 是全查詢，B 是條件查詢）
+      - 若方法 A/B 參數不同但返回類型相同 → 可合併（條件查詢的不同維度）
+   3. **生成合併 API**:
+      - **API 名稱**: 使用語義化的查詢名稱（如 `queryActivityRuleDetails`）
+      - **Input DTO**: 建立新的 Query Input，所有參數都設為可選（✗）
+      - **Output DTO**: 維持原有輸出類型
+      - **記錄合併來源**: 在 API-SPEC.md 的「合併的Mapper方法」欄位記錄原始方法名
 
-**每個 Mapper 啟動一個 Agent**，執行：
+   **範例 1: selectAll + selectByX**
 
-1. **解析方法定義**
-   - 方法名稱與參數
-   - 返回類型（單筆/列表/分頁）
-   - 註解資訊
+   ```
+   原始方法:
+   - ActivityRuleDetailMapper.selectAll() → List<ActivityRuleDetail>
+   - ActivityRuleDetailMapper.selectByLevelNo(String levelNo) → List<ActivityRuleDetail>
 
-2. **解析 SQL 邏輯**
-   - SELECT → 查詢欄位與條件
-   - INSERT/UPDATE → 異動欄位
-   - JOIN → 關聯資料表
-   - WHERE → 查詢條件邏輯
+   合併為:
+   - API 名稱: queryActivityRuleDetails
+   - Input: ActivityRuleDetailQueryInput { levelNo?: String }
+   - Output: List<ActivityRuleDetail>
+   - 合併的Mapper方法: selectAll, selectByLevelNo
+   ```
 
-3. **推導資料模型**
-   - 主要實體類別
-   - DTO 結構
-   - 關聯關係（1-1, 1-N, N-N）
+   **範例 2: 多參數查詢**
 
-**輸出**: `analysis/StudentMapper.json`
+   ```
+   原始方法:
+   - SessionTypeMapper.selectAll() → List<SessionType>
+   - SessionTypeMapper.selectByWebSite(String webSite) → List<SessionType>
+   - SessionTypeMapper.selectBySn(Integer sourceSn) → List<SessionType>
+
+   合併為:
+   - API 名稱: querySessionTypes
+   - Input: SessionTypeQueryInput { webSite?: String, sn?: Integer }
+   - Output: List<SessionType>
+   - 合併的Mapper方法: selectAll, selectByWebSite, selectBySn
+   - 注意: webSite 和 sn 可同時傳入，進行 AND 查詢
+   ```
+
+   **範例 3: 主鍵查詢 + 其他維度查詢**
+
+   ```
+   原始方法:
+   - ClientTemporalContractMapper.selectByPrimaryKey(Integer sn) → ClientTemporalContract
+   - ClientTemporalContractMapper.selectByClientSn(Integer clientSn) → List<ClientTemporalContract>
+
+   合併為:
+   - API 名稱: queryClientTemporalContracts
+   - Input: ClientTemporalContractQueryInput { sn?: Integer, clientSn?: Integer }
+   - Output: List<ClientTemporalContract> (統一為 List，sn 查詢返回單元素陣列)
+   - 合併的Mapper方法: selectByPrimaryKey, selectByClientSn
+   - 注意: sn 和 clientSn 至少傳入一個
+   ```
+
+   **不應合併的情況**:
+   - 返回類型完全不同（如一個返回 Entity，一個返回 VO）
+   - SQL 語句邏輯差異過大（如一個是統計，一個是明細）
+   - 業務語義不同（如 selectActive vs selectDeleted）
+   - Example 查詢（通常保留獨立方法以保持靈活性）
+
+5. **DTO 結構提取**
+   - Input 參數物件結構（含合併 API 的 Query Input）
+   - Output 返回物件結構
+
+**輸出**: `_analysis/{MapperName}.json`
 
 ```json
 {
   "mapper": "StudentMapper",
-  "resource_name": "student",
+  "database": "ProductDB",
   "methods": [
     {
       "name": "selectById",
       "sql_type": "SELECT",
+      "complexity": "SIMPLE",
       "params": [{ "name": "id", "type": "Long" }],
       "return_type": "Student",
-      "suggested_api": "GET /students/{id}"
+      "input_dto": "StudentIdInput",
+      "output_dto": "StudentOutput",
+      "description": "根據 ID 查詢單一學生"
     },
     {
-      "name": "selectByCondition",
+      "name": "selectStudentWithCourses",
       "sql_type": "SELECT",
-      "params": [{ "name": "condition", "type": "StudentQuery" }],
-      "return_type": "List<Student>",
-      "suggested_api": "GET /students?name={name}&grade={grade}"
+      "complexity": "COMPLEX",
+      "params": [
+        { "name": "studentId", "type": "Long" },
+        { "name": "includeInactive", "type": "Boolean" }
+      ],
+      "return_type": "List<StudentCourseVO>",
+      "input_dto": "StudentCourseQueryInput",
+      "output_dto": "StudentCourseOutput",
+      "description": "查詢學生及其選課資訊（含多表 JOIN）",
+      "needs_detail_file": true
     }
-  ],
-  "entities": {
-    "Student": {
-      "fields": ["id", "name", "grade", "email", "createTime"]
-    }
-  }
+  ]
 }
 ```
 
 ---
 
-### Phase 4: API Design Generation
+### Phase 3: Generate Specification Files
 
-**設計原則**:
+**目標**: 產出三個核心檔案 + 複雜方法的獨立檔案
 
-- RESTful 命名規範（複數資源名稱）
-- HTTP 方法語意正確（GET 查詢、POST 新增、PUT 更新、DELETE 刪除）
-- 查詢參數 vs. Path 參數
-- 分頁、排序、篩選標準化
+#### 3.1 生成 API-SPEC.md
 
-**輸出**: `api-design/student.md`
+**表格欄位**:
+
+| Mapper | API名稱 | 連線DB | Input | Output | 合併的Mapper方法 | Desc | Detail |
+| ------ | ------- | ------ | ----- | ------ | ---------------- | ---- | ------ |
+
+**說明**:
+
+- **Mapper**: Mapper 類別名稱
+- **API名稱**: 語義化的 API 名稱（對於合併的方法，使用 `query{Entity}` 命名）
+- **連線DB**: 資料庫連線名稱
+- **Input**: Input DTO 名稱（連結到 input.md）
+- **Output**: Output DTO 名稱（連結到 output.md）
+- **合併的Mapper方法**: 原始 Mapper 方法名稱（多個方法用逗號分隔）
+- **Desc**: 簡短描述
+- **Detail**: 複雜方法的詳細說明文件連結
+
+**簡單方法範例**（未合併）:
+
+| Mapper        | API名稱    | 連線DB    | Input                             | Output                          | 合併的Mapper方法 | Desc                 | Detail |
+| ------------- | ---------- | --------- | --------------------------------- | ------------------------------- | ---------------- | -------------------- | ------ |
+| StudentMapper | selectById | ProductDB | [StudentIdInput](#studentidinput) | [StudentOutput](#studentoutput) | selectById       | 根據 ID 查詢單一學生 | -      |
+
+**合併方法範例**（selectAll + selectByX）:
+
+| Mapper                   | API名稱                  | 連線DB   | Input                                                         | Output                                                | 合併的Mapper方法           | Desc                                 | Detail |
+| ------------------------ | ------------------------ | -------- | ------------------------------------------------------------- | ----------------------------------------------------- | -------------------------- | ------------------------------------ | ------ |
+| ActivityRuleDetailMapper | queryActivityRuleDetails | TutorERP | [ActivityRuleDetailQueryInput](#activityruledetailqueryinput) | [ActivityRuleDetailOutput](#activityruledetailoutput) | selectAll, selectByLevelNo | 查詢活動規則明細（可選擇性過濾等級） | -      |
+
+**複雜方法範例**（連結到獨立檔案）:
+
+| Mapper               | API名稱           | 連線DB   | Input                                             | Output                                    | 合併的Mapper方法  | Desc                   | Detail                           |
+| -------------------- | ----------------- | -------- | ------------------------------------------------- | ----------------------------------------- | ----------------- | ---------------------- | -------------------------------- |
+| ActivityRecordMapper | updateScholarShip | TutorERP | [UpdateScholarshipInput](#updatescholarshipinput) | [UpdateResultOutput](#updateresultoutput) | updateScholarShip | 批次更新獎學金計算結果 | [查看詳情](updateScholarShip.md) |
+
+#### 3.2 生成 input.md
+
+集中定義所有 Input DTO，提供錨點供 API-SPEC.md 連結
 
 ````markdown
-# Student API 設計
+# Input DTO 定義
 
-## 資源概述
+## StudentIdInput
 
-- **Resource**: `student`
-- **Base Path**: `/api/v1/students`
+| 欄位 | 類型 | 必填 | 說明    |
+| ---- | ---- | ---- | ------- |
+| id   | Long | ✓    | 學生 ID |
 
-## API 端點
+**JSON 範例**:
 
-### 1. 查詢單一學生
-
-- **Method**: `GET`
-- **Path**: `/students/{id}`
-- **原始 Mapper**: `StudentMapper.selectById(Long id)`
-- **Response**: `StudentResponse`
-
-### 2. 條件查詢學生列表（合併多個 Mapper 方法）
-
-- **Method**: `GET`
-- **Path**: `/students`
-- **Query Params**:
-  - `name` (optional): 學生姓名
-  - `grade` (optional): 年級
-  - `status` (optional): 狀態（active/inactive）
-  - `includeGraduated` (optional, boolean, default: false): 是否包含畢業生
-  - `page` (default: 0)
-  - `size` (default: 20)
-- **合併來源**:
-  - `StudentMapper.selectByCondition(StudentQuery)` → 基本查詢
-  - `StudentMapper.selectByGrade(String grade)` → 傳 `?grade={grade}`
-  - `StudentMapper.selectActiveOnly()` → 傳 `?status=active`
-  - `StudentMapper.selectIncludingGraduated()` → 傳 `?includeGraduated=true`
-- **Response**: `PagedResponse<StudentResponse>`
-
-**Mapper 方法還原對照**:
-| 原始 Mapper 方法 | 等效 API 呼叫 |
-|-----------------|-------------|
-| `selectByCondition(query)` | `GET /students?name=...&grade=...` |
-| `selectByGrade("五年級")` | `GET /students?grade=五年級` |
-| `selectActiveOnly()` | `GET /students?status=active` |
-| `selectIncludingGraduated()` | `GET /students?includeGraduated=true` |
-| `selectAll()` | `GET /students` (無參數) |
-
-### 3. 新增學生
-
-- **Method**: `POST`
-- **Path**: `/students`
-- **原始 Mapper**: `StudentMapper.insert(Student)`
-- **Request**: `CreateStudentRequest`
-- **Response**: `StudentResponse`
-
-## DTO 定義
-
-### StudentResponse
-
-```java
+```json
 {
-  "id": 1001,
-  "name": "張三",
-  "grade": "五年級",
-  "email": "zhangsan@example.com",
-  "createTime": "2026-02-11T10:30:00"
+  "id": 1001
 }
 ```
 
-### CreateStudentRequest
+---
 
-```java
+## ActivityRuleDetailQueryInput
+
+查詢活動規則明細的輸入參數（合併 `selectAll` + `selectByLevelNo`）。
+
+| 欄位    | 類型   | 必填 | 說明                       |
+| ------- | ------ | ---- | -------------------------- |
+| levelNo | String | ✗    | 等級編號（不傳則查詢全部） |
+
+**JSON 範例**:
+
+查詢特定等級：
+
+```json
 {
-  "name": "李四",
-  "grade": "三年級",
-  "email": "lisi@example.com"
+  "levelNo": "L001"
+}
+```
+
+查詢全部：
+
+```json
+{}
+```
+
+**Mapper 方法還原**:
+
+- `selectAll()` → 不傳任何參數或傳空物件
+- `selectByLevelNo("L001")` → `{"levelNo": "L001"}`
+
+---
+
+## SessionTypeQueryInput
+
+查詢課程類型的輸入參數（合併 `selectAll` + `selectByWebSite` + `selectBySn`）。
+
+| 欄位    | 類型    | 必填 | 說明           |
+| ------- | ------- | ---- | -------------- |
+| webSite | String  | ✗    | 網站名稱或代碼 |
+| sn      | Integer | ✗    | 來源序號       |
+
+**JSON 範例**:
+
+查詢全部：
+
+```json
+{}
+```
+
+根據網站查詢：
+
+```json
+{
+  "webSite": "TutorABC"
+}
+```
+
+根據序號查詢：
+
+```json
+{
+  "sn": 301
+}
+```
+
+同時使用兩個條件（AND 查詢）：
+
+```json
+{
+  "webSite": "TutorABC",
+  "sn": 301
+}
+```
+
+**Mapper 方法還原**:
+
+- `selectAll()` → 不傳任何參數或傳空物件
+- `selectByWebSite("TutorABC")` → `{"webSite": "TutorABC"}`
+- `selectBySn(301)` → `{"sn": 301}`
+
+**注意**: `webSite` 和 `sn` 可以同時傳入，會進行 AND 條件查詢。
+
+---
+
+## StudentCourseQueryInput
+
+| 欄位            | 類型    | 必填 | 說明                            |
+| --------------- | ------- | ---- | ------------------------------- |
+| studentId       | Long    | ✓    | 學生 ID                         |
+| includeInactive | Boolean | ✗    | 是否包含停用課程（預設: false） |
+
+**JSON 範例**:
+
+```json
+{
+  "studentId": 1001,
+  "includeInactive": false
 }
 ```
 ````
 
-**同時輸出**: `_mappers/StudentMapper.md`（Mapper 追溯視角）
+````
+
+#### 3.3 生成 output.md
+
+集中定義所有 Output DTO，提供錨點供 API-SPEC.md 連結
 
 ```markdown
-# StudentMapper 對應表
+# Output DTO 定義
 
-本文件記錄 `StudentMapper` 所有方法與對應 API 端點的對照關係。
+## StudentOutput
 
-## Mapper 資訊
+| 欄位 | 類型 | 說明 |
+|------|------|------|
+| id | Long | 學生 ID |
+| name | String | 姓名 |
+| grade | String | 年級 |
+| email | String | Email |
 
-- **類別名稱**: `com.tutorabc.product.studyprogress.dal_products.DBMapper.StudentMapper`
-- **類型**: MyBatis XML Mapper
-- **方法總數**: 8
-- **對應資源**: [student.md](student.md)
-
-## 方法對應表
-
-| 原始方法                 | 參數         | 返回類型            | 對應 API 端點                     | HTTP 方法 | 還原方式                     |
-| ------------------------ | ------------ | ------------------- | --------------------------------- | --------- | ---------------------------- |
-| selectById               | Long id      | Student             | `/students/{id}`                  | GET       | 直接對應                     |
-| selectByCondition        | StudentQuery | List&lt;Student&gt; | `/students?name=...&grade=...`    | GET       | 傳入查詢參數                 |
-| selectByGrade            | String grade | List&lt;Student&gt; | `/students?grade={grade}`         | GET       | 只傳 grade 參數              |
-| selectActiveOnly         | -            | List&lt;Student&gt; | `/students?status=active`         | GET       | 固定傳 status=active         |
-| selectIncludingGraduated | -            | List&lt;Student&gt; | `/students?includeGraduated=true` | GET       | 固定傳 includeGraduated=true |
-| selectAll                | -            | List&lt;Student&gt; | `/students`                       | GET       | 不傳任何參數                 |
-| insert                   | Student      | int                 | `/students`                       | POST      | 直接對應                     |
-| update                   | Student      | int                 | `/students/{id}`                  | PUT       | 直接對應                     |
-| deleteById               | Long id      | int                 | `/students/{id}`                  | DELETE    | 直接對應                     |
-
-## 合併說明
-
-### 查詢方法合併（5 個方法 → 1 個 API）
-
-以下 5 個查詢方法已合併為單一 API 端點 `GET /students`：
-
-1. **selectByCondition(StudentQuery)**
-   - API 呼叫：`GET /students?name=張&grade=五年級`
-   - 說明：傳入完整查詢條件
-
-2. **selectByGrade(String grade)**
-   - API 呼叫：`GET /students?grade=五年級`
-   - 說明：只需傳入 grade 參數
-
-3. **selectActiveOnly()**
-   - API 呼叫：`GET /students?status=active`
-   - 說明：固定傳入 status=active
-
-4. **selectIncludingGraduated()**
-   - API 呼叫：`GET /students?includeGraduated=true`
-   - 說明：固定傳入 includeGraduated=true
-
-5. **selectAll()**
-   - API 呼叫：`GET /students`
-   - 說明：不傳任何查詢參數
-
-**合併優勢**：
-
-- 減少 API 端點數量（5 → 1）
-- 提供更靈活的查詢組合
-- 符合 RESTful 設計原則
-- 降低 API 維護成本
-
-## 遷移注意事項
-
-### 高複雜度方法
-
-- **selectWithCourses**: 原本使用 JOIN 查詢，改為 API 後可能需要考慮：
-  - 使用 `include` 參數設計
-  - 或者分別呼叫 `/students/{id}` 和 `/students/{id}/courses`
-  - 注意 N+1 查詢問題
-
-### 交易邊界
-
-- **batchInsert**: 原本在同一個 Transaction，改為 API 後需評估是否：
-  - API 端提供 batch endpoint 並保證 ACID
-  - 或實作補償機制處理部分失敗情境
-```
-
----
-
-### Phase 5: Specification Assembly（KM Ready）
-
-**目標**: 整合所有 API 規格為適合貼到 KM 的完整文件
-
-**輸出 1**: `API-SPEC.md`（完整規格文件，可直接貼到 KM）
-
-````markdown
-# Product Study Progress API 規格文件
-
-## 文件資訊
-
-- **版本**: v1.0.0
-- **產生日期**: 2026-02-11
-- **Base URL**: `https://api.example.com/v1`
-- **來源**: 由 SQL Server Mapper 轉換而來
-
-## 目錄
-
-- [1. Student API](#1-student-api)
-- [2. Course API](#2-course-api)
-- [3. Enrollment API](#3-enrollment-api)
-- [4. 通用規範](#4-通用規範)
-- [5. 錯誤處理](#5-錯誤處理)
-- [6. 附錄：Mapper 對應表](#6-附錄mapper-對應表)
-
----
-
-## 1. Student API
-
-### 1.1 查詢單一學生
-
-**端點**: `GET /students/{id}`
-
-**路徑參數**:
-
-- `id` (required, integer): 學生 ID
-
-**回應範例**:
-
+**JSON 範例**:
 ```json
 {
   "id": 1001,
   "name": "張三",
   "grade": "五年級",
-  "email": "zhangsan@example.com",
-  "createTime": "2026-02-11T10:30:00"
+  "email": "zhangsan@example.com"
 }
-```
-
-**原始 Mapper**: `StudentMapper.selectById(Long id)`
-
----
-
-### 1.2 條件查詢學生列表
-
-**端點**: `GET /students`
-
-**查詢參數**:
-
-- `name` (optional, string): 學生姓名（模糊搜尋）
-- `grade` (optional, string): 年級
-- `page` (optional, integer, default: 0): 頁碼
-- `size` (optional, integer, default: 20): 每頁筆數
-
-**回應範例**:
-
-```json
-{
-  "content": [
-    {
-      "id": 1001,
-      "name": "張三",
-      "grade": "五年級",
-      "email": "zhangsan@example.com"
-    }
-  ],
-  "totalElements": 100,
-  "totalPages": 5,
-  "page": 0,
-  "size": 20
-}
-```
-
-**原始 Mapper**: `StudentMapper.selectByCondition(StudentQuery query)`
-
----
-
-## 4. 通用規範
-
-### 4.1 認證與授權
-
-所有 API 請求需在 Header 加入 Bearer Token：
-
-```
-Authorization: Bearer {access_token}
-```
-
-### 4.2 分頁規範
-
-使用 `page` 和 `size` 參數，頁碼從 0 開始。
-
-### 4.3 日期時間格式
-
-統一使用 ISO 8601 格式：`YYYY-MM-DDTHH:mm:ss`
-
----
-
-## 5. 錯誤處理
-
-### 5.1 錯誤格式
-
-```json
-{
-  "error": {
-    "code": "STUDENT_NOT_FOUND",
-    "message": "找不到指定的學生",
-    "timestamp": "2026-02-11T10:30:00"
-  }
-}
-```
-
-### 5.2 常見錯誤碼
-
-| HTTP 狀態碼 | 錯誤碼                | 說明           |
-| ----------- | --------------------- | -------------- |
-| 400         | INVALID_PARAMETER     | 參數格式錯誤   |
-| 401         | UNAUTHORIZED          | 未授權         |
-| 404         | RESOURCE_NOT_FOUND    | 資源不存在     |
-| 500         | INTERNAL_SERVER_ERROR | 伺服器內部錯誤 |
-
----
-
-## 6. 附錄：Mapper 對應表
-
-提供給開發人員遷移時參考。
-
-### 6.1 完整對應表
-
-| 原始 Mapper   | 原始方法                 | 對應 API 端點                   | HTTP 方法 | 還原方式                   |
-| ------------- | ------------------------ | ------------------------------- | --------- | -------------------------- |
-| StudentMapper | selectById               | /students/{id}                  | GET       | 直接對應                   |
-| StudentMapper | selectByCondition        | /students?name=...&grade=...    | GET       | 傳入查詢參數               |
-| StudentMapper | selectByGrade            | /students?grade={grade}         | GET       | 只傳 grade                 |
-| StudentMapper | selectActiveOnly         | /students?status=active         | GET       | 固定 status=active         |
-| StudentMapper | selectIncludingGraduated | /students?includeGraduated=true | GET       | 固定 includeGraduated=true |
-| StudentMapper | selectAll                | /students                       | GET       | 不傳參數                   |
-| StudentMapper | insert                   | /students                       | POST      | 直接對應                   |
-| CourseMapper  | selectById               | /courses/{id}                   | GET       | 直接對應                   |
-
-### 6.2 合併方法說明
-
-以下 Mapper 方法已合併為單一 API 端點，通過不同參數組合實現原有功能：
-
-#### Student 查詢方法合併（5 → 1）
-
-**合併後 API**: `GET /students`
-
-| 原始方法                   | 等效 API 呼叫                                 | 說明                         |
-| -------------------------- | --------------------------------------------- | ---------------------------- |
-| selectAll()                | `GET /students`                               | 不傳任何參數                 |
-| selectByGrade(grade)       | `GET /students?grade=五年級`                  | 只傳 grade 參數              |
-| selectActiveOnly()         | `GET /students?status=active`                 | 固定傳 status=active         |
-| selectIncludingGraduated() | `GET /students?includeGraduated=true`         | 固定傳 includeGraduated=true |
-| selectByCondition(query)   | `GET /students?name=...&grade=...&status=...` | 傳入多個查詢條件             |
-
-**合併優勢**: 減少 API 端點、提供更靈活的查詢組合、符合 RESTful 設計原則
-
-### 6.3 詳細對應文件
-
-詳細的 Mapper 方法對應、參數說明、使用範例，請參閱 `_mappers/` 目錄下的個別文件。
 ````
 
-**輸出 2**: `openapi-spec.yaml`（技術整合用，可導入 Postman/Swagger）
+## StudentCourseOutput
 
-```yaml
-openapi: 3.0.3
-info:
-  title: Product Study Progress API
-  version: 1.0.0
-  description: 由 SQL Server Mapper 轉換而來的 RESTful API
+| 欄位        | 類型                    | 說明     |
+| ----------- | ----------------------- | -------- |
+| studentId   | Long                    | 學生 ID  |
+| studentName | String                  | 學生姓名 |
+| courses     | Array&lt;CourseInfo&gt; | 選課清單 |
 
-servers:
-  - url: https://api.example.com/v1
-    description: Production
-  - url: https://api-dev.example.com/v1
-    description: Development
+**JSON 範例**:
 
-paths:
-  /students/{id}:
-    get:
-      summary: 查詢單一學生
-      tags: [Student]
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-            format: int64
-      responses:
-        "200":
-          description: Success
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/StudentResponse"
-        "404":
-          description: Student not found
-
-  /students:
-    get:
-      summary: 條件查詢學生列表
-      tags: [Student]
-      parameters:
-        - name: name
-          in: query
-          schema:
-            type: string
-        - name: grade
-          in: query
-          schema:
-            type: string
-        - name: page
-          in: query
-          schema:
-            type: integer
-            default: 0
-        - name: size
-          in: query
-          schema:
-            type: integer
-            default: 20
-      responses:
-        "200":
-          description: Success
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/PagedStudentResponse"
-
-components:
-  schemas:
-    StudentResponse:
-      type: object
-      properties:
-        id:
-          type: integer
-          format: int64
-        name:
-          type: string
-        grade:
-          type: string
-        email:
-          type: string
-        createTime:
-          type: string
-          format: date-time
-
-    PagedStudentResponse:
-      type: object
-      properties:
-        content:
-          type: array
-          items:
-            $ref: "#/components/schemas/StudentResponse"
-        totalElements:
-          type: integer
-        totalPages:
-          type: integer
-        page:
-          type: integer
-        size:
-          type: integer
+```json
+{
+  "studentId": 1001,
+  "studentName": "張三",
+  "courses": [
+    {
+      "courseId": 201,
+      "courseName": "數學",
+      "status": "active"
+    }
+  ]
+}
 ```
+
+````
+
+#### 3.4 生成複雜方法獨立檔案
+
+對於複雜方法，產出獨立的 `{api_Name}.md`，檔名使用描述性命名（例如：`selectStudentWithCourses.md`）
+
+```markdown
+# selectStudentWithCourses
+
+## 方法資訊
+
+- **Mapper**: StudentMapper
+- **方法名稱**: selectStudentWithCourses
+- **連線DB**: ProductDB
+- **複雜度**: 複雜（多表 JOIN）
+
+## 說明
+
+查詢學生基本資訊及其所有選課記錄，包含課程名稱與狀態。
+
+## Input
+
+參考: [input.md - StudentCourseQueryInput](input.md#studentcoursequeryinput)
+
+| 欄位 | 類型 | 必填 | 說明 |
+|------|------|------|------|
+| studentId | Long | ✓ | 學生 ID |
+| includeInactive | Boolean | ✗ | 是否包含停用課程（預設: false） |
+
+**範例**:
+```json
+{
+  "studentId": 1001,
+  "includeInactive": false
+}
+````
+
+## Output
+
+參考: [output.md - StudentCourseOutput](output.md#studentcourseoutput)
+
+| 欄位        | 類型                    | 說明     |
+| ----------- | ----------------------- | -------- |
+| studentId   | Long                    | 學生 ID  |
+| studentName | String                  | 學生姓名 |
+| courses     | Array&lt;CourseInfo&gt; | 選課清單 |
+
+**範例**:
+
+```json
+{
+  "studentId": 1001,
+  "studentName": "張三",
+  "courses": [
+    {
+      "courseId": 201,
+      "courseName": "數學",
+      "status": "active"
+    },
+    {
+      "courseId": 202,
+      "courseName": "英文",
+      "status": "active"
+    }
+  ]
+}
+```
+
+## SQL 邏輯
+
+```sql
+SELECT
+  s.id AS studentId,
+  s.name AS studentName,
+  c.id AS courseId,
+  c.name AS courseName,
+  e.status AS status
+FROM students s
+INNER JOIN enrollments e ON s.id = e.student_id
+INNER JOIN courses c ON e.course_id = c.id
+WHERE s.id = #{studentId}
+  AND (#{includeInactive} = true OR e.status = 'active')
+```
+
+## 注意事項
+
+- 使用 INNER JOIN 關聯學生、選課、課程三張表
+- `includeInactive` 參數控制是否過濾停用課程
+- 返回結果需要在應用層組裝成巢狀結構
+
+`````
+
+---
+
+#### 3.5 真實案例：多 Mapper 方法整合為單一 API
+
+**案例背景**:
+
+在實際專案中，一個業務功能可能會使用到多個 Mapper 方法，並且包含複雜的業務邏輯與外部 API 呼叫。此時應該將這些 Mapper 方法整合為單一 API 規格，並產生獨立的詳細說明檔案。
+
+**範例：updateScholarShip（獎學金計算更新）**
+
+- **來源檔案**: `ScholarshipBulkServiceImpl.java`
+- **使用的 Mapper**: `ActivityRecordMapper`
+- **Mapper 方法**:
+  1. `selectbySn(Integer from, Integer to)` - 查詢獎學金記錄
+  2. `updateCalculateResult(List<ActivityRecordEntity> records)` - 批次更新計算結果
+
+雖然使用了 2 個 Mapper 方法，但從 API 角度只需要一個 `updateScholarShip` API。
+
+**API-SPEC.md 中的表格項目**:
+
+| Mapper | Method | 連線DB | Input | Output | Desc | Detail |
+|--------|--------|--------|-------|--------|------|--------|
+| ActivityRecordMapper | updateScholarShip | TutorERP | [UpdateScholarshipInput](input.md#updatescholarshipinput) | [UpdateScholarshipOutput](output.md#updatescholarshipoutput) | 計算並更新獎學金發放資格 | [詳情](updateScholarShip.md) |
+
+**獨立檔案：updateScholarShip.md**
+
+````markdown
+# updateScholarShip
+
+## 方法資訊
+
+- **Mapper**: ActivityRecordMapper
+- **使用的 Mapper 方法**:
+  - `selectbySn(Integer from, Integer to)` - 查詢獎學金記錄
+  - `updateCalculateResult(List<ActivityRecordEntity> records)` - 批次更新計算結果
+- **連線DB**: TutorERP
+- **複雜度**: 複雜（多 Mapper 整合、外部 API 呼叫、批次處理）
+
+## 說明
+
+根據合約序號範圍，查詢獎學金活動記錄，並透過呼叫外部 API 取得預約記錄，計算學員是否符合獎學金發放資格。
+
+支援兩種計算類型：
+- **Type 1**: 根據總點數計算應上課堂數，檢查出席率是否達標（90%）
+- **Type 2**: 按月份統計，檢查每月出席次數是否達標（每月至少10堂）
+
+## Input
+
+參考: [input.md - UpdateScholarshipInput](input.md#updatescholarshipinput)
+
+| 欄位 | 類型 | 必填 | 說明 |
+|------|------|------|------|
+| fromId | Integer | ✓ | 起始合約序號 |
+| toId | Integer | ✓ | 結束合約序號 |
+| brandId | Integer | ✓ | 品牌 ID（用於呼叫外部 API） |
+
+**JSON 範例**:
+```json
+{
+  "fromId": 1001,
+  "toId": 1100,
+  "brandId": 2
+}
+`````
+
+## Output
+
+參考: [output.md - UpdateScholarshipOutput](output.md#updatescholarshipoutput)
+
+| 欄位    | 類型    | 說明     |
+| ------- | ------- | -------- |
+| success | Boolean | 執行結果 |
+| message | String  | 訊息     |
+| data    | Integer | 更新筆數 |
+
+**JSON 範例**:
+
+```json
+{
+  "success": true,
+  "message": "執行成功",
+  "data": 95
+}
+```
+
+## 處理流程
+
+```
+1. 查詢獎學金記錄
+   └─ Mapper: selectbySn(fromId, toId)
+
+2. 分批處理（每 10 筆一組）
+   └─ 使用 Java 8 Stream Partition
+
+3. 平行處理每批資料
+   ├─ 呼叫外部 API 取得預約記錄
+   │  └─ TutorGroupAPI.postBookingRecordLite()
+   │
+   ├─ 根據活動類型計算資格
+   │  ├─ Type 1: checkResultType1()
+   │  │  └─ 計算出席率 = 已出席堂數 / 應上堂數
+   │  │  └─ 判斷是否 >= 90%
+   │  │
+   │  └─ Type 2: checkResultType2()
+   │     └─ 按月份統計出席次數
+   │     └─ 判斷每月是否 >= 10 堂
+   │
+   └─ 更新計算結果
+      └─ Mapper: updateCalculateResult(records)
+```
+
+## 外部 API 呼叫
+
+### TutorGroupAPI - postBookingRecordLite
+
+**用途**: 查詢學員的預約（上課）記錄
+
+**請求參數**:
+
+```json
+{
+  "clientSn": [1001, 1002, 1003],
+  "contractSn": [5001, 5002, 5003],
+  "tutorBrand": "2"
+}
+```
+
+**回應欄位**:
+
+- `contractSn`: 合約序號
+- `sessionStartTime`: 課程開始時間
+- `status`: 課程狀態（0: 待上課, 1+: 已完成）
+- `refundStatus`: 退費狀態（1: 已退費）
+- `useSessions`: 使用堂數
+
+## Type 1 計算邏輯
+
+```java
+// 計算應上課堂數
+shouldRecordSession = (totalPoint / 65) * 9 / 10
+
+// 統計已出席堂數（排除已退費、超過合約結束日期後的課程）
+bookedSession = sum(record.useSessions where status > 0 and refundStatus != 1)
+
+// 計算出席率
+percent = bookedSession * 100 / shouldRecordSession
+
+// 判斷結果
+result = bookedSession >= shouldRecordSession ? "True-100%" : "False-{percent}%"
+
+// 產生說明文字
+note = "{result}-應使用:{shouldRecordSession}-已出席:{bookedSession}-歸還:{alreadyRefundSession}"
+```
+
+**範例輸出**:
+
+- 符合資格：`"True-100%-應使用 : 90-已出席 : 92-歸還 : 0"`
+- 不符資格：`"False-87%-應使用 : 90-已出席 : 78-歸還 : 2"`
+
+## Type 2 計算邏輯
+
+```java
+// 將課程按合約開始日期後的天數分配到 6 個月
+// 每個月計算出席次數（排除已退費的課程）
+
+for each month (0-5):
+  used[month] = count(records where status > 0 and refundStatus != 1)
+
+// 統計不達標的月份
+unSatisfiedMonth = count(month where used[month] < 10)
+unSatisfiedCount = sum(10 - used[month] where used[month] < 10)
+
+// 判斷結果
+result = unSatisfiedMonth == 0 ? "True" : "False-少{unSatisfiedMonth}個月-少{unSatisfiedCount}堂課"
+
+// 產生說明文字
+note = "{result}-出席次數 {used[0]} / {used[1]} / {used[2]} / {used[3]} / {used[4]} / {used[5]} /"
+```
+
+**範例輸出**:
+
+- 符合資格：`"True-出席次數 12 / 11 / 13 / 10 / 12 / 11 /"`
+- 不符資格：`"False-少2個月-少8堂課-出席次數 12 / 8 / 9 / 10 / 12 / 11 /"`
+
+## 批次與平行處理
+
+```java
+// 將查詢結果分批（每批 10 筆）
+Collection<List<ActivityRecordEntity>> multipleRecords =
+    Java8StreamPartition.partition(records, 10);
+
+// 平行處理每批資料
+multipleRecords.parallelStream().forEach(batch -> {
+    // 1. 呼叫外部 API 取得預約記錄
+    List<BookingRecordDto> bookingRecords = getSessions(batch, brandId);
+
+    // 2. 計算每筆記錄的資格
+    batch.forEach(record -> {
+        // 篩選該合約的預約記錄
+        List<BookingRecordDto> subList = bookingRecords.stream()
+            .filter(br -> br.getContractSn().equals(record.getContractSn()))
+            .collect(Collectors.toList());
+
+        // 根據類型計算
+        String note = record.getType() == 1
+            ? checkResultType1(record, subList)
+            : checkResultType2(record, subList);
+
+        record.setNote(note);
+    });
+
+    // 3. 批次更新計算結果
+    mapper.updateCalculateResult(batch);
+});
+```
+
+## 注意事項
+
+### 效能考量
+
+- 使用批次處理（每 10 筆一組）避免單次查詢過多資料
+- 使用平行處理（parallelStream）提升處理速度
+- 外部 API 呼叫有批次限制（最多 10 筆 clientSn/contractSn）
+
+### 錯誤處理
+
+- 外部 API 呼叫失敗時返回空列表，不中斷整體處理
+- 記錄錯誤訊息到 log（`logger.info`）
+
+### 資料一致性
+
+- 每批資料在平行處理中獨立執行
+- 每批資料的更新是原子性的（單次 `updateCalculateResult` 呼叫）
+
+### 日期處理
+
+- Type 1: 過濾合約結束日期後的課程
+- Type 2: 按合約開始日期後的天數分配到 6 個月區間
+  - 0-30 天：第 1 個月
+  - 31-61 天：第 2 個月
+  - ...以此類推
+
+## 實作 Mapper 方法
+
+### ActivityRecordMapper.java
+
+```java
+public interface ActivityRecordMapper {
+    // 查詢獎學金記錄（根據序號範圍）
+    List<ActivityRecordEntity> selectbySn(
+        @Param("from") Integer from,
+        @Param("to") Integer to
+    );
+
+    // 批次更新計算結果
+    Integer updateCalculateResult(List<ActivityRecordEntity> records);
+}
+```
+
+### XML Mapper
+
+```xml
+<!-- 查詢獎學金記錄 -->
+<select id="selectbySn" resultType="ActivityRecordEntity">
+    SELECT
+        sn, client_sn, contract_sn, type,
+        total_point, contract_s_date, contract_e_date
+    FROM activity_records
+    WHERE sn BETWEEN #{from} AND #{to}
+    ORDER BY sn
+</select>
+
+<!-- 批次更新計算結果 -->
+<update id="updateCalculateResult">
+    <foreach collection="list" item="item" separator=";">
+        UPDATE activity_records
+        SET note = #{item.note},
+            update_time = NOW()
+        WHERE sn = #{item.sn}
+    </foreach>
+</update>
+```
+
+## 總結
+
+這個案例展示了：
+
+1. **多個 Mapper 方法整合為單一 API**
+   - `selectbySn` + `updateCalculateResult` → `updateScholarShip` API
+
+2. **複雜業務邏輯需要詳細說明**
+   - Type 1 / Type 2 不同的計算邏輯
+   - 批次與平行處理流程
+   - 外部 API 整合
+
+3. **獨立檔案的價值**
+   - 完整的處理流程說明
+   - 計算邏輯範例
+   - 效能與錯誤處理注意事項
+   - 實作程式碼參考
+
+這樣的文件可以幫助開發人員快速理解複雜業務邏輯，並正確實作對應的 API 服務。
+
+````
 
 ---
 
@@ -673,149 +848,167 @@ components:
 ### 使用者觸發
 
 ```
-請幫我分析 D:\workspace\oms\OMS_StudyProgress\dal_products\src\main\java\com\tutorabc\product\studyprogress\dal_products\DBMapper
-這個路徑的所有 Mapper，並生成對應的 API 規格
+
+請幫我分析 D:\workspace\oms\OMS_StudyProgress\dal_products\DBMapper
+這個路徑的所有 Mapper，並生成 API 規格
+
 ```
 
 ### Agent 回應
 
 ```
+
 Phase 1: 掃描 Mapper 檔案...
-   發現 15 個 Mapper (8 個 MyBatis, 7 個 JPA Repository)
-   共 47 個方法
+發現 15 個 Mapper (8 個 MyBatis, 7 個 JPA Repository)
+共 47 個方法
 
-Phase 2: 分析方法合併機會...
-   識別到 6 組可合併的方法
-   合併前：47 個方法 → 47 個 API
-   合併後：47 個方法 → 28 個 API
-   減少 19 個 API 端點
+Phase 2: 分析方法...
+簡單方法: 32 個（直接填入表格）
+複雜方法: 15 個（產生獨立檔案）
 
-   範例合併：
-   - SessionTypeMapper.selectByType/selectByStatus/selectAll → GET /session-types?type=...&status=...
-   - StudentMapper.selectByGrade/selectActiveOnly/selectAll → GET /students?grade=...&status=...
+Phase 3: 生成規格文件...
+✓ API-SPEC.md (主表格，47 個方法)
+✓ input.md (28 個 Input DTO 定義)
+✓ output.md (22 個 Output DTO 定義)
+✓ 15 個複雜方法獨立檔案: - selectStudentWithCourses.md - updateScholarship.md - batchInsertEnrollments.md - calculateGradeStatistics.md - ...
 
-Phase 3: 深度分析中...（平行執行 15 個 Agent）
-   └─ StudentMapper: 8 methods → 3 API endpoints (合併 5 個查詢方法)
-   └─ CourseMapper: 12 methods → 8 API endpoints (合併 4 個查詢方法)
-   └─ SessionTypeMapper: 3 methods → 1 API endpoint (完全合併)
-   └─ ...
+所有檔案已輸出至: history/2026-02-26/
 
-Phase 4: 生成 API 設計文件...
-   資源視角: student.md, course.md, enrollment.md, session-type.md
-   Mapper 視角: _mappers/StudentMapper.md, _mappers/CourseMapper.md, ...
-   （含合併方法還原對照表）
-
-Phase 5: 整合完整規格文件...
-   API-SPEC.md (完整規格文件，可直接貼到 KM)
-   - 包含合併方法說明與參數對照
-   openapi-spec.yaml (技術整合用，可導入 Postman/Swagger UI)
-
-所有檔案已輸出至 d:\workspace\side\my-agent-skills\mapper-to-api-spec\history\2026-02-11\
 ```
-
----
-
-## KM 文件特色
-
-生成的 `API-SPEC.md` 包含：
-
-1. **完整目錄**: 可快速跳轉到各資源 API
-2. **清楚範例**: 每個端點都有 Request/Response 範例
-3. **通用規範**: 認證、分頁、日期格式等統一說明
-4. **錯誤處理**: 完整的錯誤碼與格式說明
-5. **Mapper 對應表**: 附錄提供開發人員遷移參考
-6. **原始來源標註**: 每個 API 標註對應的原始 Mapper 方法
-7. **合併方法說明**: 標註哪些 Mapper 方法已合併，以及如何用參數還原原始行為
-
----
-
-## 擴充功能（可選）
-
-### 1. 自動生成 Client 程式碼
-
-根據 OpenAPI spec 自動生成：
-
-- Retrofit Interface
-- Request/Response DTO
-- API Client Implementation
-
-### 2. Postman Collection
-
-- 從 OpenAPI spec 產生 Postman Collection
-- 包含所有端點與範例資料
-- 可直接匯入測試
-
----
-
-## 品質標準
-
-### API 設計品質
-
-- 符合 RESTful 規範（資源導向、HTTP 語意正確）
-- 統一的命名規範（camelCase/snake_case）
-- 完整的錯誤處理（4xx/5xx 錯誤碼）
-- 分頁、排序、過濾標準化
-
-### 文件完整性（KM Ready）
-
-- 完整目錄與錨點連結，方便瀏覽
-- 每個 API 端點有清楚的說明與範例
-- Request/Response 有實際的 JSON 範例
-- 列出必填/選填參數與預設值
-- 統一的通用規範（認證、分頁、日期格式）
-- 完整的錯誤碼對照表
-- Mapper 對應表附錄供開發人員參考
-
-### 技術整合性
-
-- OpenAPI 3.0 規格可匯入 Postman/Swagger
-- 可用於自動產生 Client 程式碼
-- 支援 API 版本控管
 
 ---
 
 ## 輸出結構
 
 ```
+
 mapper-to-api-spec/
-├── history/                                # 歷史記錄（按日期分類）
-│   ├── 2026-02-11/                         # 日期格式: YYYY-MM-DD
-│   │   ├── API-SPEC.md                     # 🎯 完整 API 規格（可貼到 KM）
-│   │   ├── openapi-spec.yaml               # Phase 5: OpenAPI 3.0（技術整合用）
-│   │   ├── mapper-inventory.json           # Phase 1: Mapper 清單
-│   │   ├── _consolidation.json             # Phase 2: 合併分析結果
-│   │   ├── _analysis/                      # Phase 3: 詳細分析（內部使用）
-│   │   │   ├── StudentMapper.json
-│   │   │   ├── CourseMapper.json
-│   │   │   └── ...
-│   │   ├── _mappers/                       # Phase 4: Mapper 追溯對應表
-│   │   │   ├── StudentMapper.md            # StudentMapper 所有方法的 API 對應
-│   │   │   ├── CourseMapper.md             # CourseMapper 所有方法的 API 對應
-│   │   │   └── ...
-│   │   ├── student.md                      # Phase 4: Student API 規格（資源視角）
-│   │   ├── course.md                       # Phase 4: Course API 規格（資源視角）
-│   │   └── enrollment.md                   # Phase 4: Enrollment API 規格
-│   └── 2026-02-10/                         # 其他日期的分析記錄
-│       └── ...
-├── SKILL.md                                # 本文件
-└── phases/                                 # 階段執行指引
-    ├── 01-discovery.md
-    ├── 02-consolidation.md
-    ├── 03-analysis.md
-    ├── 04-api-design.md
-    └── 05-spec-assembly.md
-```
+├── history/
+│ ├── 2026-02-26/
+│ │ ├── API-SPEC.md # 🎯 主表格
+│ │ ├── input.md # 🎯 所有 Input DTO 定義
+│ │ ├── output.md # 🎯 所有 Output DTO 定義
+│ │ ├── selectStudentWithCourses.md # 複雜方法 1
+│ │ ├── updateScholarship.md # 複雜方法 2
+│ │ ├── batchInsertEnrollments.md # 複雜方法 3
+│ │ ├── ... # 其他複雜方法
+│ │ ├── mapper-inventory.json # Phase 1 產出（內部）
+│ │ └── \_analysis/ # Phase 2 產出（內部）
+│ │ ├── StudentMapper.json
+│ │ ├── CourseMapper.json
+│ │ └── ...
+│ └── 2026-02-25/
+│ └── ...
+└── SKILL.md # 本文件
+
+````
 
 ### 檔案說明
 
-**核心產出**：
+**三個核心檔案**（使用者主要關注）:
 
-- **API-SPEC.md**: 🎯 完整的 API 規格文件，包含所有資源的端點、範例、錯誤碼、Mapper 對應表（含合併方法說明）。**可直接複製貼到 KM 系統**。
-- **openapi-spec.yaml**: OpenAPI 3.0 規格，可匯入 Postman、Swagger UI 或用於程式碼產生器。
+1. **API-SPEC.md**: 主表格，列出所有 Mapper 方法
+   - 簡單方法直接在表格中顯示完整資訊
+   - 複雜方法在 Detail 欄位連結到獨立檔案
 
-**輔助檔案**：
+2. **input.md**: 所有 Input DTO 集中定義
+   - 提供錨點讓 API-SPEC.md 連結
+   - 包含欄位說明、型別、必填資訊、JSON 範例
 
-- **資源視角** (`student.md`, `course.md`, ...): 單一資源的完整 API 規格，適合單獨查閱。
-- **Mapper 視角** (`_mappers/StudentMapper.md`, ...): Mapper 方法與 API 的對照表，**包含合併方法的參數還原說明**，適合開發人員遷移時快速定位。
-- **\_consolidation.json**: 記錄哪些 Mapper 方法被合併、合併理由、參數對應關係。
-- **\_analysis/**: 內部分析 JSON 資料，供進階使用者或工具整合時參考。
+3. **output.md**: 所有 Output DTO 集中定義
+   - 提供錨點讓 API-SPEC.md 連結
+   - 包含欄位說明、型別、JSON 範例
+
+**複雜方法獨立檔案**（按需產出）:
+
+- **{api_Name}.md**: 複雜方法的詳細說明
+  - 檔名使用描述性命名（如：updateScholarship.md）
+  - 包含完整 Input/Output、SQL 邏輯、注意事項
+
+**內部檔案**（分析過程產出，供參考）:
+
+- **mapper-inventory.json**: Mapper 清單
+- **\_analysis/\*.json**: 詳細分析資料
+
+---
+
+## 完整範例：API-SPEC.md
+
+```markdown
+# API 規格文件
+
+## 文件資訊
+
+- **產生日期**: 2026-02-26
+- **來源路徑**: D:\workspace\oms\OMS_StudyProgress\dal_products\DBMapper
+- **Mapper 總數**: 15
+- **方法總數**: 47
+
+---
+
+## API 列表
+
+| Mapper            | Method                   | 連線DB    | Input                                                       | Output                                               | Desc                 | Detail                              |
+| ----------------- | ------------------------ | --------- | ----------------------------------------------------------- | ---------------------------------------------------- | -------------------- | ----------------------------------- |
+| StudentMapper     | selectById               | ProductDB | [StudentIdInput](input.md#studentidinput)                   | [StudentOutput](output.md#studentoutput)             | 根據 ID 查詢單一學生 | -                                   |
+| StudentMapper     | selectAll                | ProductDB | -                                                           | [StudentOutput](output.md#studentoutput)[]           | 查詢所有學生         | -                                   |
+| StudentMapper     | selectByGrade            | ProductDB | [GradeInput](input.md#gradeinput)                           | [StudentOutput](output.md#studentoutput)[]           | 根據年級查詢學生     | -                                   |
+| StudentMapper     | selectStudentWithCourses | ProductDB | [StudentCourseQueryInput](input.md#studentcoursequeryinput) | [StudentCourseOutput](output.md#studentcourseoutput) | 查詢學生及選課資訊   | [詳情](selectStudentWithCourses.md) |
+| StudentMapper     | insert                   | ProductDB | [CreateStudentInput](input.md#createstudentinput)           | Integer                                              | 新增學生             | -                                   |
+| StudentMapper     | update                   | ProductDB | [UpdateStudentInput](input.md#updatestudentinput)           | Integer                                              | 更新學生資訊         | -                                   |
+| StudentMapper     | deleteById               | ProductDB | [StudentIdInput](input.md#studentidinput)                   | Integer                                              | 刪除學生             | -                                   |
+| CourseMapper      | selectById               | ProductDB | [CourseIdInput](input.md#courseidinput)                     | [CourseOutput](output.md#courseoutput)               | 根據 ID 查詢課程     | -                                   |
+| CourseMapper      | selectAll                | ProductDB | -                                                           | [CourseOutput](output.md#courseoutput)[]             | 查詢所有課程         | -                                   |
+| EnrollmentMapper  | batchInsert              | ProductDB | [BatchEnrollmentInput](input.md#batchenrollmentinput)       | Integer                                              | 批次新增選課記錄     | [詳情](batchInsertEnrollments.md)   |
+| ScholarshipMapper | updateScholarship        | ProductDB | [ScholarshipUpdateInput](input.md#scholarshipupdateinput)   | Integer                                              | 更新獎學金資訊       | [詳情](updateScholarship.md)        |
+| StatisticsMapper  | calculateGradeStats      | ProductDB | [GradeStatsQueryInput](input.md#gradestatsqueryinput)       | [GradeStatsOutput](output.md#gradestatsoutput)       | 計算年級統計資料     | [詳情](calculateGradeStatistics.md) |
+| ...               | ...                      | ...       | ...                                                         | ...                                                  | ...                  | ...                                 |
+
+---
+
+## 補充說明
+
+- **Input**: 點擊連結查看 [input.md](input.md) 中的完整定義
+- **Output**: 點擊連結查看 [output.md](output.md) 中的完整定義
+- **Detail**: 複雜方法會產生獨立檔案，點擊連結查看詳細說明
+```
+
+---
+
+## 品質標準
+
+### 分析準確性
+
+- 正確解析 Mapper 方法簽章與返回類型
+- 準確提取 SQL 語句與邏輯
+- 正確判斷複雜度（簡單/複雜）
+
+### 文件完整性
+
+- API-SPEC.md 表格包含所有方法
+- input.md / output.md 包含所有 DTO 定義
+- 複雜方法獨立檔案包含完整說明（Input/Output/SQL/注意事項）
+- 所有連結正確可用
+
+### DTO 定義清晰度
+
+- 欄位名稱、型別、必填資訊完整
+- 提供實際 JSON 範例
+- 複雜物件有巢狀結構說明
+
+---
+
+## 限制與注意事項
+
+1. **不做 API 命名與 endpoint 設計**
+   - 只分析 Mapper 方法，不轉換為 RESTful API
+   - 不自動設計 HTTP 方法與路由
+
+2. **複雜度判斷標準**
+   - 簡單：單表 CRUD、簡單條件查詢（< 3 個參數）
+   - 複雜：多表 JOIN、複雜邏輯、批次操作、統計聚合、動態 SQL
+
+3. **DTO 命名**
+   - Input DTO 以方法參數物件為準（若無物件則建立簡單 DTO）
+   - Output DTO 以返回類型為準
+   - 複雜方法獨立檔案檔名使用描述性命名（如：updateScholarship.md）
