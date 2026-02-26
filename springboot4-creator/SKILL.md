@@ -6,7 +6,7 @@
 
 - **Spring Boot 4.0.1** + Java 25
 - **三層式架構** (Controller → Service → Repository)
-- **Retrofit 外部 API 呼叫**（條件性生成）
+- **Spring Boot 4 聲明式 HTTP API**（條件性生成）
 - **Logback 日誌配置**（多環境支援）
 - **AOP 日誌切面** (@ApiLog annotation)
 - **統一回應格式** (BaseResponse)
@@ -31,7 +31,7 @@
 
 ### 條件性技術
 
-- **HTTP Client**: Retrofit 2.11.0 (當需要呼叫外部 API 時)
+- **HTTP Client**: Spring Boot 4 內建聲明式 HTTP API (RestClient/HttpExchange)
 - **Database**: JPA + Hibernate (當需要資料庫時)
   - PostgreSQL 或 MySQL Driver
   - Hypersistence Utils
@@ -51,7 +51,7 @@
 │   │   ├── java/{basePackage}/{appName}/
 │   │   │   ├── {AppName}Application.java
 │   │   │   ├── config/              # 配置類別
-│   │   │   │   └── RetrofitConfig.java          (條件性)
+│   │   │   │   └── RestClientConfig.java        (條件性)
 │   │   │   ├── controller/          # REST API 控制器
 │   │   │   │   ├── HelloController.java         (自動生成)
 │   │   │   │   └── {Entity}Controller.java      (模組骨架)
@@ -100,14 +100,14 @@
 
 此 Skill 分為 **6 個 Phases**：
 
-| Phase       | 說明                             | 詳細文件                                                             |
-| ----------- | -------------------------------- | -------------------------------------------------------------------- |
-| **Phase 1** | 需求探索                         | [01-requirements-discovery.md](phase/01-requirements-discovery.md)   |
-| **Phase 2** | 專案骨架生成                     | [02-project-scaffold.md](phase/02-project-scaffold.md)               |
-| **Phase 3** | Retrofit 外部 API 配置（條件性） | [03-retrofit-setup.md](phase/03-retrofit-setup.md)                   |
-| **Phase 4** | 業務模組程式碼生成               | [04-business-modules.md](phase/04-business-modules.md)               |
-| **Phase 5** | 驗證與完成                       | [05-verification-completion.md](phase/05-verification-completion.md) |
-| **Phase 6** | Docker 容器化驗證                | [06-docker-verification.md](phase/06-docker-verification.md)         |
+| Phase       | 說明                                   | 詳細文件                                                             |
+| ----------- | -------------------------------------- | -------------------------------------------------------------------- |
+| **Phase 1** | 需求探索                               | [01-requirements-discovery.md](phase/01-requirements-discovery.md)   |
+| **Phase 2** | 專案骨架生成                           | [02-project-scaffold.md](phase/02-project-scaffold.md)               |
+| **Phase 3** | 外部 API 整合與 TraceId 配置（條件性） | [03-external-api-setup.md](phase/03-external-api-setup.md)           |
+| **Phase 4** | 業務模組程式碼生成                     | [04-business-modules.md](phase/04-business-modules.md)               |
+| **Phase 5** | 驗證與完成                             | [05-verification-completion.md](phase/05-verification-completion.md) |
+| **Phase 6** | Docker 容器化驗證                      | [06-docker-verification.md](phase/06-docker-verification.md)         |
 
 ---
 
@@ -143,7 +143,7 @@ AI 會引導你完成需求探索、專案生成、驗證測試和 Docker 容器
 此 Skill 基於 ASS (Activity Sync Service) 專案模板：
 
 - 位置：`D:\workspace\side\ass`
-- 包含完整的 Spring Boot 4 + Retrofit + JPA 架構
+- 包含完整的 Spring Boot 4 + 聲明式 HTTP API + JPA 架構
 
 ---
 

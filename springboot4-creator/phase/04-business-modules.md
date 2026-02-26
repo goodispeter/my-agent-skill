@@ -10,30 +10,23 @@
 
 ### Step 4.1: 為每個模組生成 DTO
 
-為每個模組創建 Request 和 Response DTO 的骨架。
+自 Spring Boot 4 起，建議優先使用 Java record 來定義 DTO（資料傳輸物件），可大幅簡化程式碼，僅在有特殊需求（如需繼承、Lombok註解、非不可變）時才用 class。
+
+**推薦寫法：**
 
 **dto/request/{Entity}Req.java:**
 
 ```java
 package {basePackage}.{appName}.dto.request;
 
-import lombok.Data;
-
 /**
  * {Entity} Request DTO
- *
  * TODO: 根據業務需求定義請求欄位
- *
- * 範例：
- * private String name;
- * private String email;
+ * 範例：String name, String email
  */
-@Data
-public class {Entity}Req {
-
+public record {Entity}Req(
     // TODO: 在此新增請求欄位
-
-}
+) {}
 ```
 
 **dto/response/{Entity}Rsp.java:**
@@ -41,26 +34,17 @@ public class {Entity}Req {
 ```java
 package {basePackage}.{appName}.dto.response;
 
-import lombok.Data;
-
 /**
  * {Entity} Response DTO
- *
  * TODO: 根據業務需求定義回應欄位
- *
- * 範例：
- * private Long id;
- * private String name;
- * private String email;
- * private LocalDateTime createdAt;
+ * 範例：Long id, String name, String email, LocalDateTime createdAt
  */
-@Data
-public class {Entity}Rsp {
-
+public record {Entity}Rsp(
     // TODO: 在此新增回應欄位
-
-}
+) {}
 ```
+
+> 若有特殊需求（如需 mutable 欄位、Lombok、繼承等），仍可用 class，但預設建議 record。
 
 ---
 
